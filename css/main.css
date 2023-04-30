@@ -1,0 +1,160 @@
+.aclean {
+    word-break: break-all;
+    text-decoration: none;
+    color: #444
+}
+
+.active {
+    text-decoration: underline
+}
+
+ul {
+    list-style-type: circle
+}
+
+.navbar .active {
+    text-decoration: underline
+}
+
+a, .clicable {
+    cursor: pointer
+}
+
+.tdn {
+    text-decoration: none !important
+}
+
+.sresalt {
+    padding: 1em;
+    position: absolute;
+    z-index: 999;
+    background: #fff;
+    display: none
+}
+
+label {
+    color: #999;
+    font-size: .8rem;
+    margin-bottom: 0px !important;
+    margin-top: .8em !important;
+}
+
+.bg-red {
+    background-color: red;
+    color: #FFF !important
+}
+
+.bg-yellow {
+    background-color: yellow !important
+}
+
+.bg-black {
+    background-color: #000 !important;
+    color: #fff
+}
+
+.unused, .unused a, .unused i, .unused span {
+    background: none !important;
+    color: #AAA !important;
+    text-decoration: line-through !important
+}
+
+/*.sr a{ display: block }
+Drag And Drop form*/
+.note {
+    width: 500px;
+    margin: 50px auto;
+    font-size: 1.1em;
+    color: #333;
+    text-align: justify
+}
+
+#drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 20px;
+    width: 480px;
+    margin: 50px auto;
+    padding: 20px
+}
+
+#drop-area.highlight {
+    border-color: purple
+}
+
+p {
+    margin-top: 0
+}
+
+.my-form {
+    margin-bottom: 10px
+}
+
+#gallery {
+    margin-top: 10px
+}
+
+#gallery img {
+    width: 150px;
+    margin-bottom: 10px;
+    margin-right: 10px;
+    vertical-align: middle
+}
+
+.button {
+    display: inline-block;
+    padding: 10px;
+    background: #ccc;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid #ccc
+}
+
+.button:hover {
+    background: #ddd
+}
+
+#fileElem {
+    display: none
+}
+
+@media only screen and (max-width: 600px) {
+    h1 {
+        font-size: 2rem
+    }
+}
+
+@media (min-width: 768px) {
+    .navbar-container {
+        position:sticky;
+        top: 0;
+        overflow-y: auto;
+        height: 100vh
+    }
+
+    .navbar-container .navbar {
+        align-items: flex-start;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        flex-direction: column;
+        height: 100%
+    }
+
+    .navbar-container .navbar-collapse {
+        align-items: flex-start
+    }
+
+    .navbar-container .nav {
+        flex-direction: column;
+        flex-wrap: nowrap
+    }
+
+    .navbar-container .navbar-nav {
+        flex-direction: column !important
+    }
+}
+
+@media only screen and (max-width: 600px) {
+    h1 {
+        font-size:2rem
+    }
+}
