@@ -4,7 +4,7 @@
 	include_once( 'set_up.php' );
 	
 	// Пароли
-	include_once( 'set_up.php' );
+	include_once( 'secret.php' );
 	
 	// И функционал ()
 	include_once( 'func_list.php' );

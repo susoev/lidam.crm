@@ -9,10 +9,14 @@
 	if( !is_numeric( $_REQUEST['crm'] ) ) exit( 'out_03' );
 	
 	// Показывает за последние Х часов, у которых ANS на нуле
-	include_once( 'set_up.php' ); $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
+	include_once( 'set_up.php' );
+
+	// Пароли
+	include_once( 'secret.php' );
+
+	$db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	
 	// Вытащит все звонки, старше X часов
-	exit( "SELECT * FROM `calls` WHERE `crm` = {$_REQUEST['crm']} AND `uts` > " . ( $_SERVER['REQUEST_TIME'] - $g['history'] * 60 * 60 ) . " ORDER by `uts` DESC" );
 	$res = $db -> query( "SELECT * FROM `calls` WHERE `crm` = {$_REQUEST['crm']} AND `uts` > " . ( $_SERVER['REQUEST_TIME'] - $g['history'] * 60 * 60 ) . " ORDER by `uts` DESC" );
 	
 	if( !$res -> num_rows ) exit( 'err' );
