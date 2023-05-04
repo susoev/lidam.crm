@@ -4,9 +4,43 @@
 // CRM система для работы с заявками
 // Эта часть обслуживает процесс работы операторов
 
-	// База в люом случае подключается
-	$db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
+// База в люом случае подключается
+$db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	
+
+// Достанет все заявки по теме
+	function text_orders(){
+		global $g;
+		
+		// Соберет все темы по которым можно получать заявки
+		foreach( json_decode( file_get_contents( "{$g['u']['crm']}.json" ), true ) as $a ) if( $a[0] > 1000 ) $tar[] = $a[0];
+		
+		// Отправка запроса на заявки
+		$r = file_get_contents(
+
+			$g['svr_out'][0], false, stream_context_create(
+
+				array(
+
+					'http' => array(
+
+						'header'  => "Content-type: application/x-www-form-urlencoded\r\n", 'method'  => 'POST', 'content' => http_build_query( [
+
+							'a' => $tar,
+							'crm' => $g['u']['crm'],
+							'api_key' => $g['svr_out'][1]
+
+						] )
+
+					)
+				)
+			)
+		);
+		
+		// Возвращает результат
+		return json_decode( $r, true );
+
+	}
 
 // Получает город по id
 	function get_city( $id ){
@@ -51,7 +85,7 @@
 		global $ua, $g, $db;
 		
 		// Получает заявку
-		$r = get_orders( 'order' )[0]; $qar = json_decode( $r['jso'], true );
+		$r = get_orders( 'order' )[0]; $qar = json_decode( $r['jso'], true ); if( empty( $r ) ) exit( 'Ошибка. Такой заявки нет!' );
 		
 		// Получает все звонки по этому номеру
 		$na = call_byNum( get_call( $r['uuid'] )['o'] );
@@ -83,7 +117,7 @@
 		}
 		
 		// Аудио, которые есть по этому номеру
-		$s = NULL; foreach( $na as $k => $v ) $s .= "<p class='mt-3'>" . date( 'd.m.Y H:i', $v['uts'] ) . " ( {$v['dura']} сек )<br />" . ( !empty( $v['url'] ) ? "<audio controls=''><source src='{$v['url']}' type='audio/mpeg'></audio>" : NULL ) . "</p>";
+		$s = NULL; if( !empty( $na ) ) foreach( $na as $k => $v ) $s .= "<p class='mt-3'>" . date( 'd.m.Y H:i', $v['uts'] ) . " ( {$v['dura']} сек )<br />" . ( !empty( $v['url'] ) ? "<audio controls=''><source src='{$v['url']}' type='audio/mpeg'></audio>" : NULL ) . "</p>";
 		
 		// Заверщение
 		$g['body'] .= $disa ? NULL : "<div class='my-2'><input type='hidden' value='{$ua[1]}' name='id'><button class='btn btn-primary' type='submit'>Сохранить</button></form>";
