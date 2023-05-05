@@ -269,6 +269,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		$so = ''; if( $ora = get_orders( $r['o'] ) ){ $so = "<p>😳 <b class='text-danger'>Внимание: по этому номеру есть заявки:</b><br />"; foreach( $ora as $k => $v ) $so .= "<a target='_blank' href='/order/{$v['id']}'>№{$v['id']} от " . date( 'd.m.Y H:i', $v['uts'] ) . "</a>"; $so .= "</p>"; }
 		
 		$g['body'] = preg_replace( [ '/-ORDERS-/', '/-SSS-/', '/-NME-/', '/-QUIZ-/', '/-THEME-/', '/-INTO-/', '/-FROM-/', '/-HIST-/' ], [ $so, $ss, "[{$g['u']['name']}]", $q, "[{$a[1]}]", $r['g'], $r['o'], $s ], file_get_contents( 'inc/tm_call_i.html' ) );
+		$g['title'] = "Карточка звонка";
 		
 		// print_r( $g ); print_r( $ss ); print_r( $a ); print_r( $r ); exit;
 		
@@ -402,27 +403,63 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	function main_screen(){
 		global $g;
 		
-		// На гланом экране:
-		// Показать звонки
-		// Показать заявки с сайтов
-		// Показать скрипты и возражения
-		// $a = json_decode( file_get_contents( "{$g['u']['crm']}.json" ),true );
-		
 		// Достанет заявки этого оператора
-		$s = NULL; if( $a = get_orders( 'by_user' ) ) foreach( $a as $r ){
+		$yo_s = NULL; if( $a = get_orders( 'by_user' ) ) foreach( $a as $r ) $yo_s .= "<p class='small'><b class='badge bg-secondary mx-1'>140</b> <a href='/order/{$r['id']}' class='text-info'>Заявка №{$r['id']}</a><br /><span class='text-secondary'>" . date( 'd.m H:i', $r['uts'] ) . "</span></p>\n";
+		
+		// Достанет все текстовые заявки!! Внимание, предусмотри дизабл тех, кто уже есть
+		$fo_s = NULL; if( $a = text_orders() ){
+
+			// Проверит и уберет заявки с сайта, по которым уже были созвоны
+			$a = check_2orders( $a );
 			
-			$s .= "<p class='small'><b class='badge bg-secondary mx-1'>140</b> <a href='/order/{$r['id']}' class='text-info'>Заявка №{$r['id']}</a><br /><span class='text-secondary'>" . date( 'd.m H:i', $r['uts'] ) . "</span></p>\n";
-			
+			// Выводит не более 10 штук, чтобы не засирать экран
+			$i = 0; foreach( $a as $r ){ $i++; if( $i > 10 ) break;
+
+				$fo_s .= "<p class='small'><a href='/call_o?s={$r[0]}&tid={$r[1]}&oid={$r[2]}' class='btn border btn-sm btn-light'>{$r[4]} <small>(" . ( ceil( ( $_SERVER['REQUEST_TIME'] - $r[3] ) / 60 ) ) . " м )</small> </a></p>\n";
+
+			}
+
 		}
 		
-		// print_r( $r );
-		// print_r( $a );
-		
+		// Вывод
 		$g['title'] = 'CRM ' . $g['u']['crm'];
-		$g['body'] = preg_replace( '/-YORS-/', $s, file_get_contents( 'inc/template.html' ) );
+		$g['body'] = preg_replace( [ '/-YORS-/', '/-FORMS-/' ], [ $yo_s, $fo_s ], file_get_contents( 'inc/template.html' ) );
 		
 		include_once( 'bootstrap.php' );
 		
+	}
+
+// Проверит по номера, если в системе уже есть такие заявки, то удалит номера
+	function check_2orders( $a ){
+		global $db;
+		
+		// достанет номера по всем заявкам из системы за последние 5 дней
+		$res = $db -> query( "SELECT `call` FROM `orders` WHERE `uts` > " . ( $_SERVER['REQUEST_TIME'] - 86400 * 50 ) . " ORDER by `id` DESC" );
+		
+		if( !$res -> num_rows ) return $a;
+		
+		// Проверка номеров из базы на вхождение в искомый массив
+		while( $r = $res -> fetch_array( MYSQLI_ASSOC ) ){
+
+			// Берем только последние 10 цифр телефона, т.к. могут быть варианты 922, 8922, 7922, +7922
+			$n = substr( $r['call'], -10 );
+
+			// Сравнение
+			foreach( $a as $k => $ar ){
+
+				// Если находит такой номер, то удаляет элемент их массива
+				if( substr( $ar[4], -10 ) == $n ){
+
+					unset( $a[$k] ); break;
+
+				}
+
+			}
+
+		}
+		
+		return $a;
+
 	}
 
 // Разбор ЧПУ + редирект для прелоадов
@@ -437,5 +474,6 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		
 		exit;
 	}
+	
 
 ?>
