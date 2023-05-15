@@ -8,6 +8,18 @@
 $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	
 
+// Скопируется с githubа
+	function github_check(){
+		global $g;
+
+		$s = file_get_contents( 'https://raw.githubusercontent.com/susoev/lidam.crm/main/func_list.php' );
+		
+		echo strlen( $s ) . " : " . strlen( file_get_contents( __FILE__ ) );
+		exit;
+
+
+	}
+
 // Достанет все заявки по теме
 	function text_orders(){
 		global $g;
