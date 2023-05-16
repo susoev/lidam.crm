@@ -46,15 +46,12 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		// Если есть изменения
 		if( ( $a != $fa ) || isset( $_REQUEST['update'] ) ){
 
-			// Флаг для перезаписи ф-ла
-			$changes = true;
-
 			// Содержимое локального файла
 			$fa = json_decode( $fa, true );
 
 			// Лист перезаписи
 			$msg = NULL;
-			
+
 			// Иду по гихабу
 			foreach( json_decode( $a, true ) as $k => $v ){
 				
