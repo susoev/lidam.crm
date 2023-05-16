@@ -46,6 +46,18 @@
 	
 	// Короткие ссылки
 	if( preg_match( '/^inc\/.+/', $g['body'] ) ) $g['body'] = file_get_contents( $g['body'] );
+
+	// Покажет алерты
+	if( isset( $_REQUEST['msg'] ) ){
+
+?>
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+	<?=$_REQUEST['msg']?>
+	<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+<?
+
+	}
 	
 	echo $g['body'];
 	

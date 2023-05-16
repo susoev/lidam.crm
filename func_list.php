@@ -52,6 +52,9 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 			// Содержимое локального файла
 			$fa = json_decode( $fa, true );
 
+			// Лист перезаписи
+			$msg = NULL;
+			
 			// Иду по гихабу
 			foreach( json_decode( $a, true ) as $k => $v ){
 				
@@ -68,22 +71,21 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 				// Если файл изменился
 				if( $v['sha'] != $fa[$k]['sha'] ){
 
-					// $new_file = 'contents/' . $v['name'];
-
 					// Достанет контент // и перезапишет его
-					// $ar = json_decode( git_load( $new_file ), true );
+					$ar = json_decode( git_load( 'contents/' . $v['name'] ), true );
 					
-					// file_put_contents( $v['name'], base64_decode( $ar['content'] ) );
+					file_put_contents( $v['name'], base64_decode( $ar['content'] ) );
 
-					echo "{$v['name']}\n";
+					$msg .= "Обновлен: {$v['name']}<br />\n";
 					
 				}
 
 			}
 			
 			// Запишет то что получил от гита в файлик
-			// file_put_contents( $f, $a );
-			exit( 'you' );
+			file_put_contents( $f, $a );
+			header( "Location: /" . ( $msg ? "?msg=" . urlencode( $msg ) : NULL ) );
+			die;
 
 		} else {
 
