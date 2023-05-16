@@ -44,7 +44,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		$fa = file_get_contents( $f );
 
 		// Если есть изменения
-		if( $a != $fa ){
+		if( ( $a != $fa ) || isset( $_REQUEST['update'] ) ){
 
 			// Флаг для перезаписи ф-ла
 			$changes = true;
@@ -53,7 +53,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 			$fa = json_decode( $fa, true );
 
 			// Иду по гихабу
-			foreach( json_decode( $a, true ) as $v ){
+			foreach( json_decode( $a, true ) as $k => $v ){
 				
 				// Если папка
 				if( $v['type'] == 'dir' ){
@@ -66,14 +66,14 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 				}
 
 				// Если файл изменился
-				if( $v['sha'] != $fa['sha'] ){
+				if( $v['sha'] != $fa[$k]['sha'] ){
 
-					$new_file = 'contents/' . $v['name'];
+					// $new_file = 'contents/' . $v['name'];
 
 					// Достанет контент // и перезапишет его
-					$ar = json_decode( git_load( $new_file ), true );
+					// $ar = json_decode( git_load( $new_file ), true );
 					
-					file_put_contents( $new_file, base64_decode( $ar['content'] ) );
+					// file_put_contents( $v['name'], base64_decode( $ar['content'] ) );
 
 					echo "{$v['name']}\n";
 					
@@ -82,7 +82,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 			}
 			
 			// Запишет то что получил от гита в файлик
-			file_put_contents( $f, $a );
+			// file_put_contents( $f, $a );
 			exit( 'you' );
 
 		} else {
