@@ -18,18 +18,12 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		// Хеш, для сверки с гитом
 		$f = 'tmp/github.tmp';
 
+		// Создаст файл, если ещё нет
+		if( !is_dir( 'tmp' ) ) mkdir( 'tmp' ); if( !is_file( $f ) ) file_put_contents( $f, '' );
+
 		// Если локальный вызов, не из браузера, выдаст напоминание об обновлении
 		if( $ua[0] != __FUNCTION__ ){
 
-			// Создаст файл, если ещё нет
-			if( !is_file( $f ) ){
-
-				file_put_contents( $f, '' );
-
-				return true;
-
-			}
-			
 			// Если обновление более суток
 			if( ( ( filectime( $f ) + 86400 ) < $_SERVER['REQUEST_TIME'] ) || !filesize( $f ) ) return true;
 
