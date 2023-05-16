@@ -8,15 +8,114 @@
 $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	
 
-// Скопируется с githubа
-	function github_check(){
+// Чек с гита на предмет изменений
+	function git_check(){
+		global $g, $ua;
+
+		// Если это не админ
+		if( $g['u']['id'] != 1 ) return false;
+
+		// Хеш, для сверки с гитом
+		$f = 'tmp/github.tmp';
+
+		// Если локальный вызов, не из браузера, выдаст напоминание об обновлении
+		if( $ua[0] != __FUNCTION__ ){
+
+			// Создаст файл, если ещё нет
+			if( !is_file( $f ) ){
+
+				file_put_contents( $f, '' );
+
+				return true;
+
+			}
+			
+			// Если обновление более суток
+			if( ( ( filectime( $f ) + 86400 ) < $_SERVER['REQUEST_TIME'] ) || !filesize( $f ) ) return true;
+
+			return false;
+
+		}
+
+		// Делает запрос к гиту
+		if( !$a = git_load( 'contents/' ) ) die( 'Err_06:' . __FUNCTION__ );
+
+		// Локальный файл
+		$fa = file_get_contents( $f );
+
+		// Если есть изменения
+		if( $a != $fa ){
+
+			// Флаг для перезаписи ф-ла
+			$changes = true;
+
+			// Содержимое локального файла
+			$fa = json_decode( $fa, true );
+
+			// Иду по гихабу
+			foreach( json_decode( $a, true ) as $v ){
+				
+				// Если папка
+				if( $v['type'] == 'dir' ){
+
+					// Создаст если нет
+					if( !is_dir( $v['name'] ) ) mkdir( $v['name'] );
+
+					continue;
+
+				}
+
+				// Если файл изменился
+				if( $v['sha'] != $fa['sha'] ){
+
+					$new_file = 'contents/' . $v['name'];
+
+					// Достанет контент // и перезапишет его
+					$ar = json_decode( git_load( $new_file ), true );
+					
+					file_put_contents( $new_file, base64_decode( $ar['content'] ) );
+
+					echo "{$v['name']}\n";
+					
+				}
+
+			}
+			
+			// Запишет то что получил от гита в файлик
+			file_put_contents( $f, $a );
+			exit( 'you' );
+
+		} else {
+
+			die( 'nothing to change' );
+
+		}
+		
+	}
+
+// Загрузка с гита // Достанет файлы с гитхаба
+	function git_load( $tail ){
 		global $g;
 
-		$s = file_get_contents( 'https://raw.githubusercontent.com/susoev/lidam.crm/main/func_list.php' );
+		$ch = curl_init();
 		
-		echo strlen( $s ) . " : " . strlen( file_get_contents( __FILE__ ) );
-		exit;
+		curl_setopt( $ch, CURLOPT_URL, $g['repo'] . $tail );
+		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt( $ch, CURLOPT_HTTPHEADER, [
 
+			'Accept: application/vnd.github+json',
+			'Authorization: Bearer ' . $g['gha'],
+			'X-GitHub-Api-Version: 2022-11-28',
+			'User-Agent: REQUEST'
+
+		] );
+		
+		$res = curl_exec( $ch ); curl_close( $ch );
+
+		// Результат
+		if( $res ) return $res;
+
+		return false;
 
 	}
 
@@ -416,7 +515,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		global $g;
 		
 		// Достанет заявки этого оператора
-		$yo_s = NULL; if( $a = get_orders( 'by_user' ) ) foreach( $a as $r ) $yo_s .= "<p class='small'><b class='badge bg-secondary mx-1'>140</b> <a href='/order/{$r['id']}' class='text-info'>Заявка №{$r['id']}</a><br /><span class='text-secondary'>" . date( 'd.m H:i', $r['uts'] ) . "</span></p>\n";
+		$yo_s = NULL; if( $a = get_orders( 'by_user' ) ) foreach( $a as $r ) $yo_s .= "<p class='small'>22<b class='badge bg-secondary mx-1'>140</b> <a href='/order/{$r['id']}' class='text-info'>Заявка №{$r['id']}</a><br /><span class='text-secondary'>" . date( 'd.m H:i', $r['uts'] ) . "</span></p>\n";
 		
 		// Достанет все текстовые заявки!! Внимание, предусмотри дизабл тех, кто уже есть
 		$fo_s = NULL; if( $a = text_orders() ){
@@ -482,9 +581,12 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		if( !empty( $_REQUEST['p'] ) ) $ua = explode( "/", rtrim( $_REQUEST['p'], '/' ) ); if( empty( $ua[0] ) ) $ua[0] = 'main_screen';
 		
 		// Если есть функция без необходимости загрузки страницы, подключаю
-		if( function_exists( $ua[0] ) ) $ua[0]();
-		
-		exit;
+		if( function_exists( $ua[0] ) ){
+
+			if( !$ua[0]() ) die( 'Err:' . __FUNCTION__ . ":" . $ua[0] );
+
+		}
+
 	}
 	
 
