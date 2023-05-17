@@ -192,7 +192,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		
 		// Получает заявку
 		$r = get_orders( 'order' )[0]; $qar = json_decode( $r['jso'], true ); if( empty( $r ) ) exit( 'Ошибка. Такой заявки нет!' );
-		// print_r( $r ); exit;
+		
 		// Получает все звонки по этому номеру
 		$na = call_byNum( get_call( $r['uuid'] )['o'] );
 		
@@ -483,10 +483,26 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 
 // Профиль
 	function profile(){
-		global $g;
+		global $g, $db;
 		
+		$sh_s = NULL;
+		
+		// достанет Смены пользователя
+		$res = $db -> query( "SELECT * FROM `shift` WHERE `uid` = {$g['u']['id']} ORDER by `id` ASC" );
+		
+		if( $res -> num_rows ){
+		
+			$sh_s .= "<h3 class='mb-3'>Ваши смены</h3>";
+			while( $r = $res -> fetch_array( MYSQLI_ASSOC ) ){
+
+				$sh_s .= "<p>" . date( "d.m.Y <b>H:i</b>", $r['start'] ) . " - " . ( !empty( $r['end'] ) ? date( "<b>H:i</b>", $r['end'] ) . " | " . round( ( $r['end'] - $r['start'] ) / 3600 ) . " ч." : "..." ) . "</p>";
+
+			}
+
+		}
+
 		$g['title'] = 'Профиль';
-		$g['body'] = "<div class='col'><p>Ваш профиль.</p><p><a href='/logout'>Выход</a></p></div>";
+		$g['body'] = "<div class='col'><p>Ваш профиль. <a href='/logout'>Выход</a></p>{$sh_s}</div>";
 		
 		unset( $g['menu'] );
 		include_once( 'bootstrap.php' );
@@ -497,20 +513,26 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	function start_work(){
 		global $g, $db;
 		
+		// 2. шаг = выбрал время работы
 		if( isset( $_REQUEST['go'] ) ){
 			
 			// Переупакую куки
 			setcookie( 'user', null, -1 ); unset( $_COOKIE['user'] );
 			
-			// Добавлю время стопа смены
-			$g['u']['shift_stop'] = $_SERVER['REQUEST_TIME'] + 4 * 60 * 60 + 10 * 60;
+			// Добавлю время стопа смены + 5 минут
+			$g['u']['shift_stop'] = $_SERVER['REQUEST_TIME'] +$_REQUEST['go'] * 60 * 60 + 5 * 60;
 			
-			setcookie( 'user', json_encode( $g['u'], JSON_UNESCAPED_UNICODE ), $_SERVER['REQUEST_TIME'] + 30*24*60*60, "/" );
+			// Запишет в кук
+			setcookie( 'user', json_encode( $g['u'], JSON_UNESCAPED_UNICODE ), $_SERVER['REQUEST_TIME'] + 30 * 24 * 60 * 60, "/" );
+
+			// Пометка в базу о начале смены
+			$db -> query( "INSERT INTO `shift` ( `uid`, `start` ) VALUES ( {$g['u']['id']}, '{$_SERVER['REQUEST_TIME']}' )" );
 			
-			header( "Location: /" );
+			header( "Location: /?msg=" . urlencode( "Вы начали смену!" ) );
 			
 		}
 		
+		// 1. шаг Начало работы - экран, выбирает время смены
 		$g['title'] = "Начало работы!";
 		$g['body'] = "inc/start_work.html";
 		
@@ -520,15 +542,45 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		
 	}
 
+// Конец смены
+	function stop_work(){
+		global $g, $db;
+		
+		
+		// Переупакует куки
+		setcookie( 'user', null, -1 ); unset( $_COOKIE['user'] );
+		
+		// Запишет новый кук без смены
+		unset( $g['u']['shift_stop'] );
+		setcookie( 'user', json_encode( $g['u'], JSON_UNESCAPED_UNICODE ), $_SERVER['REQUEST_TIME'] + 30 * 24 * 60 * 60, "/" );
+
+		// Достанет из базы инфу о последнем начале смены
+		$id = $db -> query( "SELECT `id` FROM `shift` WHERE `uid` = {$g['u']['id']} ORDER by `id` DESC LIMIT 1" ) -> fetch_array( MYSQLI_ASSOC )['id'];
+
+		// Пометка в базу о конце смены
+		$db -> query( "UPDATE `shift` SET `end` = '{$_SERVER['REQUEST_TIME']}' WHERE `id` = {$id}" );
+		
+		header( "Location: /?msg=" . urlencode( "Поздравляем! Смена закончилась. Можно передохнуть и попробовать еще раз" ) );
+		
+		die;
+		
+	}
+
 // Главный экран
 	function main_screen(){
 		global $g;
 		
+		$start_shift = "<a href='/start_work'>Начать смену</a> для отображения";
+
 		// Достанет заявки этого оператора
-		$yo_s = NULL; if( $a = get_orders( 'by_user' ) ) foreach( $a as $r ) $yo_s .= "<p class='small'>22<b class='badge bg-secondary mx-1'>140</b> <a href='/order/{$r['id']}' class='text-info'>Заявка №{$r['id']}</a><br /><span class='text-secondary'>" . date( 'd.m H:i', $r['uts'] ) . "</span></p>\n";
+		$yo_s = NULL; if( $a = get_orders( 'by_user' ) ) foreach( $a as $r ) $yo_s .= "<p class='small'><b class='badge bg-secondary mx-1'>!</b> <a href='/order/{$r['id']}' class='text-info'>Заявка №{$r['id']}</a> <span class='text-secondary'>" . date( 'd.m H:i', $r['uts'] ) . "</span></p>\n";
 		
 		// Достанет все текстовые заявки!! Внимание, предусмотри дизабл тех, кто уже есть
-		$fo_s = NULL; if( $a = text_orders() ){
+		$fo_s = $start_shift;
+
+		if( $g['u']['shift_stop'] ) if( $a = text_orders() ){
+
+			$fo_s = NULL;
 
 			// Проверит и уберет заявки с сайта, по которым уже были созвоны
 			$a = check_2orders( $a );
@@ -541,10 +593,13 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 			}
 
 		}
+
+		// Входящие звонки показывает только если идёт смена
+		$ca_s = empty( $g['u']['shift_stop'] ) ? $start_shift : "<div class='listener'>Загрузка ...</div>";
 		
 		// Вывод
 		$g['title'] = 'CRM ' . $g['u']['crm'];
-		$g['body'] = preg_replace( [ '/-YORS-/', '/-FORMS-/' ], [ $yo_s, $fo_s ], file_get_contents( 'inc/template.html' ) );
+		$g['body'] = preg_replace( [ '/-CALLS-/', '/-YORS-/', '/-FORMS-/' ], [ $ca_s, $yo_s, $fo_s ], file_get_contents( 'inc/template.html' ) );
 		
 		include_once( 'bootstrap.php' );
 		

@@ -18,8 +18,11 @@
 			<div class='container text-warning'>
 <?
 	
-	// Смена если идет
-	$s = $g['u']['shift_stop'] < $_SERVER['REQUEST_TIME'] ? "<a class='badge bg-danger' href='/start_work'>Начать cмену</a>" : "<span class='count_down' data-counter='{$g['u']['shift_stop']}'>загрузка...</span>";
+	// Если идет смена
+	$s = "<span class='count_down' data-counter='{$g['u']['shift_stop']}'>загрузка...</span>";
+	
+	// Если не на смене
+	if( !isset( $g['u']['shift_stop'] ) ) $s = "<a class='badge bg-danger' href='/start_work'>Начать cмену</a>";
 	
 	// Если не авторизован, меню не показывает
 	if( !empty( $g['u']['crm'] ) ){
@@ -74,7 +77,7 @@
 <script>
 	
 	// Только цифры
-	$('.numeric').on('input', function (event) { 
+	$('.numeric').on('input', function ( event ) { 
 		
 		this.value = this.value.replace( /\D/g, '' );
 	
@@ -191,11 +194,29 @@
 // Обратный отсчет
 	if( $( 'span' ).hasClass( 'count_down' ) ){
 		
+		// var jso = JSON.parse( getCookie( 'user' ) );
+		// var obj = jQuery.parseJSON( getCookie( 'user' ) );
+		// console.log( obj );
+
 		var tid = setInterval( function(){
 			
 			// Всего сек
 			var t1 = $( '.count_down' ).data( 'counter' ) - Math.floor( ( new Date() ).getTime() / 1000 );
+
 			
+			// jso = JSON.parse( getCookie( 'user' ) );
+			// console.log( jso.shift_stop );
+			
+			// Закончит смену, если закончилось время
+			if( t1 < 1 ){
+
+				document.body.innerHTML = "<h1 class='text-center py-4 my-4'><span class='text-danger'>Внимание!</span><br />Смена закончилась!</h1>";
+				clearInterval( tid );
+				window.location.replace( "http://lidam.crm/stop_work?ref=auto" );
+				return;
+
+			}
+
 			// Всего мин
 			var t2 = Math.floor( t1 / 60 );
 			
