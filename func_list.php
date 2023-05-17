@@ -112,8 +112,8 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 
 	}
 
-// Достанет все заявки по теме
-	function text_orders(){
+// Достанет все заявки по теме. Для запроса конкретной заявки( 10, 198509 ) = ( сервер, номер заявки )
+	function text_orders( $srv = 0, $oid = 0 ){
 		global $g;
 		
 		// Соберет все темы по которым можно получать заявки
@@ -132,7 +132,9 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 
 							'a' => $tar,
 							'crm' => $g['u']['crm'],
-							'api_key' => $g['svr_out'][1]
+							'api_key' => $g['svr_out'][1],
+							'oid' => $oid,
+							'srv' => $srv
 
 						] )
 
@@ -190,7 +192,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		
 		// Получает заявку
 		$r = get_orders( 'order' )[0]; $qar = json_decode( $r['jso'], true ); if( empty( $r ) ) exit( 'Ошибка. Такой заявки нет!' );
-		
+		// print_r( $r ); exit;
 		// Получает все звонки по этому номеру
 		$na = call_byNum( get_call( $r['uuid'] )['o'] );
 		
@@ -268,7 +270,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		foreach( $r as $k => $v ) if( is_numeric( $k ) ) $q[$k] = $v;
 		
 		// Заношу в базу
-		$q = "UPDATE `orders` SET `jso` = '" . json_encode( $q, JSON_UNESCAPED_UNICODE ) . "', `cty` = {$r['cty']}, `price` = " . preg_replace( '/\D/', '', $r['price'] ) . ", `phn` = " . ( $r['phn'] ? "'{$r['phn']}'" : 'NULL'  ) . ", `nme` = '{$r['nme']}', `txt` = '{$r['txt']}' WHERE `id` = {$r['id']}";
+		$q = "UPDATE `orders` SET `jso` = '" . json_encode( $q, JSON_UNESCAPED_UNICODE ) . "', `cty` = {$r['cty']}, `price` = " . preg_replace( '/\D/', '', $r['price'] ) . ", `phn` = " . ( $r['phn'] ? "'{$r['phn']}'" : 'NULL'  ) . ", `adt` = '{$r['adt']}', `nme` = '{$r['nme']}', `txt` = '{$r['txt']}' WHERE `id` = {$r['id']}";
 		
 		$db -> query( $q );
 		
@@ -295,7 +297,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		// print_r( $r ); exit;
 		
 		// Заношу в базу
-		$db -> query( "INSERT INTO `orders` ( `crm`, `oid`, `uuid`, `uts`, `jso`, `cty`, `tid`, `price`, `call`, `phn`, `nme`, `txt` ) VALUES ( {$r['crm']}, {$g['u']['id']}, '{$r['uuid']}', '{$_SERVER['REQUEST_TIME']}', '{$r['q']}', {$r['cty']}, {$r['tid']}, {$r['price']}, '{$r['call']}', " . ( $r['phn'] ? "'{$r['phn']}'" : 'NULL'  ) . ", '{$r['nme']}', '{$r['txt']}' );" );
+		$db -> query( "INSERT INTO `orders` ( `crm`, `oid`, `uuid`, `uts`, `jso`, `cty`, `tid`, `price`, `call`, `phn`, `adt`, `nme`, `txt` ) VALUES ( {$r['crm']}, {$g['u']['id']}, '{$r['uuid']}', '{$_SERVER['REQUEST_TIME']}', '{$r['q']}', {$r['cty']}, {$r['tid']}, {$r['price']}, '{$r['call']}', " . ( $r['phn'] ? "'{$r['phn']}'" : 'NULL'  ) . ", '{$r['adt']}', '{$r['nme']}', '{$r['txt']}' );" );
 		
 		// Переадресует обратно
 		header( "Location: /?saved_order={$db -> insert_id}" );
@@ -304,7 +306,21 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		
 	}
 	
-// Входящий звонок
+// Текстовая заявка с сайта
+	function call_o(){
+		global $ua, $g, $db;
+		
+		// Получает данные об этой заявке
+		$a = text_orders( $_REQUEST['s'], $_REQUEST['oid'] ); if( !$a ) die( 'Err_07' );
+
+		$g['body'] = preg_replace( [ '/-ORDERS-/', '/-SSS-/', '/-NME-/', '/-QUIZ-/', '/-THEME-/', '/-INTO-/', '/-FROM-/', '/-HIST-/' ], [ $so, $ss, "[{$g['u']['name']}]", $q, "[{$a[1]}]", $r['g'], $r['o'], $s ], file_get_contents( 'inc/tm_call_o.html' ) );
+		$g['title'] = "Карточка звонка";
+		
+		include_once( 'bootstrap.php' );
+		
+	}
+
+	// Входящий звонок
 	function call_i(){
 		global $ua, $g, $db;
 		
@@ -370,8 +386,9 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		if( $na = call_byNum( $r['o'] )  ) $s = NULL; foreach( $na as $k => $v ) $s .= "<p class='mt-3'>" . date( 'd.m.Y H:i', $v['uts'] ) . " ( {$v['dura']} сек )<br />" . ( !empty( $v['url'] ) ? "<audio controls=''><source src='{$v['url']}' type='audio/mpeg'></audio>" : NULL ) . "</p>";
 		
 		// Если по этому номеру тел. уже были заявки
-		$so = ''; if( $ora = get_orders( $r['o'] ) ){ $so = "<p>😳 <b class='text-danger'>Внимание: по этому номеру есть заявки:</b><br />"; foreach( $ora as $k => $v ) $so .= "<a target='_blank' href='/order/{$v['id']}'>№{$v['id']} от " . date( 'd.m.Y H:i', $v['uts'] ) . "</a>"; $so .= "</p>"; }
+		$so = ''; if( $ora = get_orders( $r['o'] ) ){ $so = "<p>😳 <b class='text-danger'>Внимание: по этому номеру есть заявки:</b><br />"; foreach( $ora as $k => $v ) $so .= "<a target='_blank' href='/order/{$v['id']}'>№{$v['id']} от " . date( 'd.m.Y H:i', $v['uts'] ) . "</a><br />"; $so .= "</p>"; }
 		
+		// Подключает форму, карточка звонка ( inc/tm_call_i.html )
 		$g['body'] = preg_replace( [ '/-ORDERS-/', '/-SSS-/', '/-NME-/', '/-QUIZ-/', '/-THEME-/', '/-INTO-/', '/-FROM-/', '/-HIST-/' ], [ $so, $ss, "[{$g['u']['name']}]", $q, "[{$a[1]}]", $r['g'], $r['o'], $s ], file_get_contents( 'inc/tm_call_i.html' ) );
 		$g['title'] = "Карточка звонка";
 		
@@ -533,7 +550,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		
 	}
 
-// Проверит по номера, если в системе уже есть такие заявки, то удалит номера
+// Проверит по номера, если в системе уже есть такие заявки, то удалит номера из архива
 	function check_2orders( $a ){
 		global $db;
 		

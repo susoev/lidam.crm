@@ -3,8 +3,8 @@
 	// Заголовки
 	header( "Access-Control-Allow-Origin: *" ); header( 'Content-Type: text/plain; charset=utf-8' );
 	
-	// Показывает за последние Х часов, у которых ANS на нуле
-	include_once( 'set_up.php' ); $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
+	// База
+	include_once( 'secret.php' ); $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	
 	// Причесываю к маленькому
 	$_REQUEST['cty'] = mb_strtolower( urldecode( $_REQUEST['cty'] ) );
