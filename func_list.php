@@ -31,8 +31,11 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 
 		}
 
-		// Делает запрос к гиту
-		if( !$a = git_load( 'contents/' ) ) die( 'Err_06:' . __FUNCTION__ );
+		// Делает запрос к гиту, возврайщается обычным массивом, для сравнения, делаю в json
+		$la = git_load( 'contents/' ); $a = json_encode( $al, JSON_UNESCAPED_UNICODE );
+		
+		// Сравнит json в хеше и полученный
+		if( !$la ) die( 'Err_06:' . __FUNCTION__ );
 
 		// Локальный файл
 		$fa = file_get_contents( $f );
@@ -47,7 +50,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 			$msg = NULL;
 
 			// Иду по гихабу
-			foreach( json_decode( $a, true ) as $k => $v ){
+			foreach( $la as $k => $v ){
 				
 				// Если папка
 				if( $v['type'] == 'dir' ){
@@ -63,11 +66,11 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 				if( $v['sha'] != $fa[$k]['sha'] ){
 
 					// Достанет контент // и перезапишет его
-					$ar = json_decode( git_load( 'contents/' . $v['name'] ), true );
+					$ar = json_decode( git_load( 'contents/' . $v['path'] ), true );
 					
-					file_put_contents( $v['name'], base64_decode( $ar['content'] ) );
+					file_put_contents( $v['path'], base64_decode( $ar['content'] ) );
 
-					$msg .= "Обновлен: {$v['name']}<br />\n";
+					$msg .= "Обновлен: {$v['path']}<br />\n";
 					
 				}
 
@@ -75,6 +78,8 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 			
 			// Запишет то что получил от гита в файлик
 			file_put_contents( $f, $a );
+			
+			// Отправит восвояси
 			header( "Location: /" . ( $msg ? "?msg=" . urlencode( $msg ) : NULL ) );
 			die;
 
@@ -106,9 +111,15 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		$res = curl_exec( $ch ); curl_close( $ch );
 
 		// Результат
-		if( $res ) return $res;
+		if( $res ) $a = json_decode( $res, true );
 
-		return false;
+		foreach( $a as $k => $ar ){
+
+			if( $ar['type'] == 'dir' ) $a = array_merge( $a, git_load( 'contents/' . $ar['path'] ) );
+
+		}
+
+		return $a;
 
 	}
 
