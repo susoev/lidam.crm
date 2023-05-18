@@ -496,8 +496,6 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	function profile(){
 		global $g, $db;
 		
-		$sh_s = NULL;
-		
 		// достанет Смены пользователя
 		$res = $db -> query( "SELECT * FROM `shift` WHERE `uid` = {$g['u']['id']} ORDER by `id` ASC" );
 		
