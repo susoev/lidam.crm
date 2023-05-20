@@ -32,7 +32,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		}
 
 		// Делает запрос к гиту, возврайщается обычным массивом, для сравнения, делаю в json
-		$la = git_load( 'contents/' ); $a = json_encode( $al, JSON_UNESCAPED_UNICODE );
+		$la = git_load( 'contents/' ); $a = json_encode( $al, JSON_UNESCAPED_UNICODE ); print_r( $a ); exit( 'ok' );
 		
 		// Сравнит json в хеше и полученный
 		if( !$la ) die( 'Err_06:' . __FUNCTION__ );
@@ -68,7 +68,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 					// Достанет контент // и перезапишет его
 					$ar = json_decode( git_load( 'contents/' . $v['path'] ), true );
 					
-					file_put_contents( $v['path'], base64_decode( $ar['content'] ) );
+					// file_put_contents( $v['path'], base64_decode( $ar['content'] ) );
 
 					$msg .= "Обновлен: {$v['path']}<br />\n";
 					
