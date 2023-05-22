@@ -66,9 +66,9 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 				if( $v['sha'] != $fa[$k]['sha'] ){
 
 					// Достанет контент // и перезапишет его
-					$ar = json_decode( git_load( 'contents/' . $v['path'] ), true );
+					$ar = git_load( 'contents/' . $v['path'] );
 					
-					// file_put_contents( $v['path'], base64_decode( $ar['content'] ) );
+					file_put_contents( $v['path'], base64_decode( $ar['content'] ) );
 
 					$msg .= "Обновлен: {$v['path']}<br />\n";
 					
@@ -80,7 +80,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 			file_put_contents( $f, $a );
 			
 			// Отправит восвояси
-			header( "Location: /" . ( $msg ? "?msg=" . urlencode( $msg ) : NULL ) );
+			exit( 'me-ok' ); header( "Location: /" . ( $msg ? "?msg=" . urlencode( $msg ) : NULL ) );
 			die;
 
 		} else {
