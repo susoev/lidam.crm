@@ -32,7 +32,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		}
 
 		// Делает запрос к гиту, возврайщается обычным массивом, для сравнения, делаю в json
-		$la = git_load( 'contents/' ); $a = json_encode( $al, JSON_UNESCAPED_UNICODE ); print_r( $a ); exit( 'ok' );
+		$la = git_load( 'contents/' ); $a = json_encode( $la, JSON_UNESCAPED_UNICODE );
 		
 		// Сравнит json в хеше и полученный
 		if( !$la ) die( 'Err_06:' . __FUNCTION__ );
@@ -95,7 +95,7 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 	function git_load( $tail ){
 		global $g;
 
-		$ch = curl_init();
+		$ch = curl_init(); $a = false;
 		
 		curl_setopt( $ch, CURLOPT_URL, $g['repo'] . $tail );
 		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
@@ -111,12 +111,16 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		$res = curl_exec( $ch ); curl_close( $ch );
 
 		// Результат
-		if( $res ) $a = json_decode( $res, true );
+		if( $res ){
+			
+			$a = json_decode( $res, true );
 
-		foreach( $a as $k => $ar ){
+			foreach( $a as $k => $ar ){
 
-			if( $ar['type'] == 'dir' ) $a = array_merge( $a, git_load( 'contents/' . $ar['path'] ) );
+				if( $ar['type'] == 'dir' ) $a = array_merge( $a, git_load( 'contents/' . $ar['path'] ) );
 
+			}
+			
 		}
 
 		return $a;
