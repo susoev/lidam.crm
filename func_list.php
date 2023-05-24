@@ -326,10 +326,24 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		global $ua, $g, $db;
 		
 		// Получает данные об этой заявке
-		$a = text_orders( $_REQUEST['s'], $_REQUEST['oid'] ); if( !$a ) die( 'Err_07' );
+		$r = text_orders( $_REQUEST['s'], $_REQUEST['oid'] ); if( !$r ) die( 'Err_07' );
 
-		$g['body'] = preg_replace( [ '/-ORDERS-/', '/-SSS-/', '/-NME-/', '/-QUIZ-/', '/-THEME-/', '/-INTO-/', '/-FROM-/', '/-HIST-/' ], [ $so, $ss, "[{$g['u']['name']}]", $q, "[{$a[1]}]", $r['g'], $r['o'], $s ], file_get_contents( 'inc/tm_call_o.html' ) );
-		$g['title'] = "Карточка звонка";
+		// Получает скрипт для этого шлюза
+		$a = json_decode( file_get_contents( "{$g['u']['crm']}.json" ),true );
+		
+		// Список всех скриптов
+		$ss = NULL; foreach( $a as $k => $v ) if( ( !empty( $v[1] ) && ( $v[0] != 1000 ) ) ) $ss .= "<a href='/call_o/?s={$_GET['s']}&tid={$_GET['tid']}&oid={$_GET['oid']}&script={$k}'>{$v[1]}</a> / "; $ss .= "<a href='/call_i/{$r['uuid']}?script=other'>Другое</a>";
+
+		list( $q, $a ) = get_quiz( $a, NULL ); print_r( $r ); echo $q; exit;
+
+		// Домен откуда заявка
+		$ws = "<a href='{$r['url']}' target='_blank'>" . parse_url( $r['url'] )['host'] . "</a>";
+
+		// Текст заявки, если есть
+		$txt = mb_strlen( $r['txt'] ) > 2 ? "<div class='my-2 text-info border border-info p-3'>{$r['txt']}</div>" : '';
+		
+		$g['body'] = preg_replace( [ '/-WS-/', '/-SSS-/', '/-CTY-/', '/-CNME-/', '/-NME-/', '/-TXT-/', '/-QUIZ-/' ], [ $ws, $ss, $r['city_im'], $r['nme'], "[{$g['u']['name']}]", $txt, $q ], file_get_contents( 'inc/tm_call_o.html' ) );
+		$g['title'] = "Исходящий";
 		
 		include_once( 'bootstrap.php' );
 		
@@ -346,19 +360,54 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		$a = json_decode( file_get_contents( "{$g['u']['crm']}.json" ),true );
 		
 		// Список всех скриптов
-		$ss = NULL; foreach( $a as $k => $v ) if( !empty( $v[1] ) ) $ss .= "<a href='/call_i/{$r['uuid']}?script={$k}'>{$v[1]}</a> / "; $ss .= "<a href='/call_i/{$r['uuid']}?script=other'>Другое</a>";
+		$ss = NULL; foreach( $a as $k => $v ) if( ( !empty( $v[1] ) && ( $v[0] != 1000 ) ) ) $ss .= "<a href='/call_i/{$r['uuid']}?script={$k}'>{$v[1]}</a> / "; $ss .= "<a href='/call_i/{$r['uuid']}?script=other'>Другое</a>";
 		
-		// Применение допскрипта
-		$scr = isset( $_REQUEST['script'] ) ? $_REQUEST['script'] : $r['g'];
+		list( $q, $a ) = get_quiz( $a, $r['g'] );
 		
-		// Если такой шлюз есть в списке
+		// Получает все звонки по этому номеру
+		if( $na = call_byNum( $r['o'] )  ) $s = NULL; foreach( $na as $k => $v ) $s .= "<p class='mt-3'>" . date( 'd.m.Y H:i', $v['uts'] ) . " ( {$v['dura']} сек )<br />" . ( !empty( $v['url'] ) ? "<audio controls=''><source src='{$v['url']}' type='audio/mpeg'></audio>" : NULL ) . "</p>";
+		
+		// Если по этому номеру тел. уже были заявки
+		$so = ''; if( $ora = get_orders( $r['o'] ) ){ $so = "<p>😳 <b class='text-danger'>Внимание: по этому номеру есть заявки:</b><br />"; foreach( $ora as $k => $v ) $so .= "<a target='_blank' href='/order/{$v['id']}'>№{$v['id']} от " . date( 'd.m.Y H:i', $v['uts'] ) . "</a><br />"; $so .= "</p>"; }
+		
+		// Подключает форму, карточка звонка ( inc/tm_call_i.html )
+		$g['body'] = preg_replace( [ '/-ORDERS-/', '/-SSS-/', '/-NME-/', '/-QUIZ-/', '/-THEME-/', '/-INTO-/', '/-FROM-/', '/-HIST-/' ], [ $so, $ss, "[{$g['u']['name']}]", $q, "[{$a[1]}]", $r['g'], $r['o'], $s ], file_get_contents( 'inc/tm_call_i.html' ) );
+		$g['title'] = "Карточка звонка";
+		
+		include_once( 'bootstrap.php' );
+		
+	}
+
+// Формирует html форму опросника принимает $a массив всех опросников и $gw - gatewaym куда звонят при входящем
+	function get_quiz( $a, $gw ){
+
+		// Если есть $_GET['tid'] - значит это исходящая заявка
+		if( isset( $_GET['tid'] ) ){
+
+			foreach( $a as $k => $ar ) if( $ar[0] == $_GET['tid'] ){
+
+				$gw = $k;
+				$scr = $k;
+
+				break;
+
+			}
+
+		} else {
+
+			// Применение допскрипта same
+			$scr = ( isset( $_GET['script'] ) && !$gw ) ? $_GET['script'] : $gw;
+
+		}
+
+		// Если такой шлюз есть в списке same
 		if( isset( $a[$scr] ) ){
 			
 			// Если у него маркер same // Тему оставит
-			if( $a[$r['g']][2][0] == 'same' ){
+			if( $a[$gw][2][0] == 'same' ){
 				
-				$tid = $a[$r['g']][0];
-				$a = $a[$a[$r['g']][2][1]];
+				$tid = $a[$gw][0];
+				$a = $a[$a[$gw][2][1]];
 				$a[0] = $tid;
 				
 			} else {
@@ -370,10 +419,10 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		} else {
 			
 			// Скрипта с таким шлюзом нет
-			exit( 'err_05' );
+			die( 'err_05' );
 			
 		}
-		
+
 		// Вывод опросника
 		$q = NULL; $i = 0; foreach( $a as $k => $v ){ if( $k < 2 ) continue; $i++;
 			
@@ -396,21 +445,9 @@ $db = new mysqli( 'localhost', $g['db'][0], $g['db'][1], $g['db'][2] );
 		
 		// Скрытые
 		$q .= "<input type='hidden' name='call' value='{$r['o']}' /><input type='hidden' name='tid' value='{$a[0]}' /><input type='hidden' name='uuid' value='{$r['uuid']}' /><input type='hidden' name='src' value='{$src}' />";
-		
-		// Получает все звонки по этому номеру
-		if( $na = call_byNum( $r['o'] )  ) $s = NULL; foreach( $na as $k => $v ) $s .= "<p class='mt-3'>" . date( 'd.m.Y H:i', $v['uts'] ) . " ( {$v['dura']} сек )<br />" . ( !empty( $v['url'] ) ? "<audio controls=''><source src='{$v['url']}' type='audio/mpeg'></audio>" : NULL ) . "</p>";
-		
-		// Если по этому номеру тел. уже были заявки
-		$so = ''; if( $ora = get_orders( $r['o'] ) ){ $so = "<p>😳 <b class='text-danger'>Внимание: по этому номеру есть заявки:</b><br />"; foreach( $ora as $k => $v ) $so .= "<a target='_blank' href='/order/{$v['id']}'>№{$v['id']} от " . date( 'd.m.Y H:i', $v['uts'] ) . "</a><br />"; $so .= "</p>"; }
-		
-		// Подключает форму, карточка звонка ( inc/tm_call_i.html )
-		$g['body'] = preg_replace( [ '/-ORDERS-/', '/-SSS-/', '/-NME-/', '/-QUIZ-/', '/-THEME-/', '/-INTO-/', '/-FROM-/', '/-HIST-/' ], [ $so, $ss, "[{$g['u']['name']}]", $q, "[{$a[1]}]", $r['g'], $r['o'], $s ], file_get_contents( 'inc/tm_call_i.html' ) );
-		$g['title'] = "Карточка звонка";
-		
-		// print_r( $g ); print_r( $ss ); print_r( $a ); print_r( $r ); exit;
-		
-		include_once( 'bootstrap.php' );
-		
+
+		return [ $q, $a ];
+		// print_r( [ $q, $a ] ); die;
 	}
 		
 // Проверка авторизации
